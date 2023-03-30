@@ -11,16 +11,6 @@ type Data = {
   name: string;
 };
 
-type RecordingIds = { recording_id: string }[];
-
-const query = `
-query recs {
-recordings(limit: 100, where:{workspace_id:{_eq:"ee16d7da-5f6e-4d6e-ad5e-09845d29112b"}}) {
-    id
-}
-}
-`;
-
 async function queryGraphQL(query: string) {
   const queryRes = await fetch(hasuraUrl, {
     method: "POST",
@@ -34,48 +24,24 @@ async function queryGraphQL(query: string) {
     }),
   });
 
-  return await queryRes.json();
-}
-
-async function insertRecordings(ids: RecordingIds) {
-  const insertRes = await fetch(hasuraUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-hasura-admin-secret": hasuraKey,
-    },
-    body: JSON.stringify({
-      query: `
-      mutation insertRecordings($recordings: [recordings_insert_input!]!) {
-        insert_recordings(objects: $recordings) {
-          affected_rows
-        }
-      }
-      `,
-      variables: {
-        ids: ids,
-      },
-    }),
-  });
-
-  return await insertRes.json();
+  const res = await queryRes.json();
+  return res;
 }
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {
-  const {
-    data: { recordings },
-  } = await queryGraphQL(`
+  const { data } = await queryGraphQL(`
   query recs {
-    recordings(
-        limit: 100, 
-        where: { workspace_id: {_eq: "ee16d7da-5f6e-4d6e-ad5e-09845d29112b" } }
-    ) {
+    simple_inbox(limit: 100) {
       id
+      status
+      recording {
+        url 
+      }
     }
   }`);
 
-  res.status(200).json(recordings);
+  res.status(200).json(data);
 }
